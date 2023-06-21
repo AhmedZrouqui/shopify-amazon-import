@@ -5,7 +5,7 @@ import express from "express";
 import serveStatic from "serve-static";
 
 import shopify from "./shopify.js";
-import productCreator from "./product-creator.js";
+import productCreator, {createAmazonImportedProduct} from "./product-creator.js";
 import GDPRWebhookHandlers from "./gdpr.js";
 import puppeteer from 'puppeteer'
 
@@ -65,34 +65,44 @@ app.post("/api/products/amazon/import", async(_req, res) => {
   let status = 200;
   let error = null;
   let data;
+  const body = _req.body
   
   try {
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
   });
 
-  console.log(_req)
 
   const page = await browser.newPage();
 
   await page.goto(
-    'https://www.amazon.fr/Shams-aThe%20Book%20of%20the%20Sun%20of%20GnosisMaarif-%D8%B4%D9%85%D8%B3-%D8%A7%D9%84%D9%85%D8%B9%D8%A7%D8%B1%D9%81-Gnosis-ebook/dp/B07KCLK79Y',
+    body.uri,
       {
           waitUntil: 'domcontentloaded',
       }
   );
 
   const [title] = await page.$x('//*[@id="productTitle"]');
-
+  const [imageUrl] = await page.$x('//*[@id="landingImage"]');
+    
+  console.log("title", title)
   const titleText = (
       await (await title.getProperty('innerText')).jsonValue()
   ).toString();
+  console.log("img", imageUrl)
+  const imageUrlText = (
+    await (await imageUrl.getProperty('src')).jsonValue()
+).toString();
 
   data = {
-    title: titleText
+    title: titleText,
+    price: body.price || 200.00,
+    imageUrl: imageUrlText
   }
 
   await browser.close();
+
+  await createAmazonImportedProduct(res.locals.shopify.session, data)
   } catch(e) {
     console.log(`Failed to process products/create: ${e.message}`);
     status = 500;

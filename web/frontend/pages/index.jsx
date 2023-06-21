@@ -10,23 +10,47 @@ import { TitleBar } from "@shopify/app-bridge-react";
 import { useTranslation, Trans } from "react-i18next"
 import { useCallback, useState } from "react";
 import { useAuthenticatedFetch } from "../hooks";
+import { Toast } from "@shopify/app-bridge-react";
 
 export default function HomePage() {
   const { t } = useTranslation();
   const _fetch = useAuthenticatedFetch();
+  const emptyToastProps = { content: null };
+  const [toastProps, setToastProps] = useState(emptyToastProps);
   const [link, setLink] = useState('')
   const handleLinkChange = useCallback((value) => setLink(value), [])
+
+  const toastMarkup = toastProps.content && (
+    <Toast {...toastProps} onDismiss={() => setToastProps(emptyToastProps)} />
+  );
+
   const handleSubmit = async () => {
-    await _fetch('/api/products/amazon/import', {
+    const response = await _fetch('/api/products/amazon/import', {
       method: "POST",
-      body: {
-        uri: link
+      headers: {
+        'Content-Type': 'application/json'
       },
-      data: JSON.stringify({
-        zbila: "zbiksla"
+      body: JSON.stringify({
+        uri: link
       })
     })
+
+    if(response.ok){
+      setToastProps({
+        content: 'Product imported successfully.'
+      })
+    }
+    else {
+      setToastProps({
+        content: 'An error has occurred while importing the product.',
+        error: true
+      })
+    }
+
   }
+
+
+
   return (
     <Page narrowWidth>
       <TitleBar title={t("HomePage.title")} primaryAction={null} />
@@ -49,6 +73,7 @@ export default function HomePage() {
           </Form>
         </Layout.Section>
       </Layout>
+      {toastMarkup}
     </Page>
   );
 }

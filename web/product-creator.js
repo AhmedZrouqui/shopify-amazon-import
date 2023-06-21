@@ -80,6 +80,39 @@ const CREATE_PRODUCTS_MUTATION = `
   }
 `;
 
+export async function createAmazonImportedProduct(session, data){
+  const product = new shopify.api.rest.Product({ session })
+  const image = new shopify.api.rest.Image({ session })
+
+  try{
+    product.title = data.title;
+    product.variants = [{
+      price: Math.round(data.price)
+    }];
+  
+    await product.save({ 
+      update: true 
+    });
+  
+    image.src = data.imageUrl
+    image.product_id = product.id
+    image.width = null;
+    image.height = null;
+  
+    await image.save({
+      update: true
+    });
+  } catch(e){
+    if (error instanceof GraphqlQueryError) {
+      throw new Error(
+        `${error.message}\n${JSON.stringify(error.response, null, 2)}`
+      );
+    } else {
+      throw error;
+    }
+  }
+}
+
 export default async function productCreator(
   session,
   count = DEFAULT_PRODUCTS_COUNT
