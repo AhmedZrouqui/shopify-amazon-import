@@ -1,1 +1,0 @@
-console.log("zbila rani dakhl")

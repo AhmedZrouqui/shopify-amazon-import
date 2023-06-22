@@ -86,6 +86,7 @@ export async function createAmazonImportedProduct(session, data){
 
   try{
     product.title = data.title;
+    product.body_html = data.description;
     product.variants = [{
       price: Math.round(data.price)
     }];

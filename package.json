@@ -19,7 +19,6 @@
   "private": true,
   "workspaces": [
     "web",
-    "web/frontend",
-    "extensions/*"
+    "web/frontend"
   ]
 }

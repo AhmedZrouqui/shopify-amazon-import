@@ -4,6 +4,8 @@ import { readFileSync } from "fs";
 import express from "express";
 import serveStatic from "serve-static";
 
+import { getImageXPath, getDescriptionXPath } from './utils.js'
+
 import shopify from "./shopify.js";
 import productCreator, {createAmazonImportedProduct} from "./product-creator.js";
 import GDPRWebhookHandlers from "./gdpr.js";
@@ -65,6 +67,7 @@ app.post("/api/products/amazon/import", async(_req, res) => {
   let status = 200;
   let error = null;
   let data;
+  let imageUrlText;
   const body = _req.body
   
   try {
@@ -76,28 +79,40 @@ app.post("/api/products/amazon/import", async(_req, res) => {
   const page = await browser.newPage();
 
   await page.goto(
-    body.uri,
+    body.link,
       {
           waitUntil: 'domcontentloaded',
       }
   );
 
+  if(body.product_type === "clothing/apparel"){
+    const imageUrl = await page.$('div#unrolledImgNo0 > div > img');
+    imageUrlText = (
+      await (await imageUrl.getProperty('src')).jsonValue()
+    ).toString() || null;
+  } else {
+    const [_imageUrl] = await page.$x(getImageXPath(body.product_type));
+    imageUrlText = (
+      await (await _imageUrl.getProperty('src')).jsonValue()
+    ).toString() || null;
+  }
+
   const [title] = await page.$x('//*[@id="productTitle"]');
-  const [imageUrl] = await page.$x('//*[@id="landingImage"]');
-    
-  console.log("title", title)
+  const [description] = await page.$x(getDescriptionXPath(body.product_type));
+
   const titleText = (
       await (await title.getProperty('innerText')).jsonValue()
-  ).toString();
-  console.log("img", imageUrl)
-  const imageUrlText = (
-    await (await imageUrl.getProperty('src')).jsonValue()
-).toString();
+  ).toString() || null;
+
+  const descriptionHTML = (
+    await (await description.getProperty('innerHTML')).jsonValue()
+  ).toString() || null;
 
   data = {
     title: titleText,
-    price: body.price || 200.00,
-    imageUrl: imageUrlText
+    price: body.price,
+    imageUrl: imageUrlText,
+    description: descriptionHTML
   }
 
   await browser.close();
